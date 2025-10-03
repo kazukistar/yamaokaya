@@ -23,75 +23,67 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: cover; /* 多少切れても画面いっぱい */
+      object-fit: cover; /* 全画面、多少切れてもOK */
     }
   </style>
 </head>
 <body>
   <img id="img" src="./images/1.jpg" />
   <script>
-    const IMAGE_COUNT = 4; // 枚数に合わせる
+    const IMAGE_COUNT = 4; // 枚数
     const IMAGES = Array.from({length: IMAGE_COUNT}, (_, i) => `./images/${i+1}.jpg`);
-
-    // ローカル保存されたホットスポットを使う
     const HOTSPOTS_IMG = JSON.parse(localStorage.getItem('tapnext.hotspots') || '{}');
 
     let index = 0;
     const imgEl = document.getElementById('img');
 
-    function clamp(i){ return (i + IMAGES.length) % IMAGES.length; }
+    function clamp(i){ return (i+IMAGES.length)%IMAGES.length; }
     function show(){ imgEl.src = IMAGES[index]; }
     function next(){ index = clamp(index+1); show(); }
     function prev(){ index = clamp(index-1); show(); }
 
-    // ホットスポット判定（画像の%座標基準）
     function getDispRect(){
-      const vw = innerWidth, vh = innerHeight;
-      const iw = imgEl.naturalWidth || 1, ih = imgEl.naturalHeight || 1;
-      const s = Math.max(vw/iw, vh/ih);
-      const dw = iw*s, dh = ih*s, dx = (vw-dw)/2, dy = (vh-dh)/2;
-      return {x:dx, y:dy, w:dw, h:dh};
+      const vw=innerWidth, vh=innerHeight;
+      const iw=imgEl.naturalWidth||1, ih=imgEl.naturalHeight||1;
+      const s=Math.max(vw/iw, vh/ih);
+      const dw=iw*s, dh=ih*s, dx=(vw-dw)/2, dy=(vh-dh)/2;
+      return {x:dx,y:dy,w:dw,h:dh};
     }
     function imgPercentToScreen(r){
-      const R = getDispRect();
-      const L = R.x + (r.x/100)*R.w;
-      const T = R.y + (r.y/100)*R.h;
-      const W = (r.w/100)*R.w;
-      const H = (r.h/100)*R.h;
-      return {L,T,W,H};
+      const R=getDispRect();
+      return {
+        L: R.x+(r.x/100)*R.w,
+        T: R.y+(r.y/100)*R.h,
+        W: (r.w/100)*R.w,
+        H: (r.h/100)*R.h
+      };
     }
     function hit(x,y){
-      const list = HOTSPOTS_IMG[index] || [];
-      for(const r of list){
-        const R = imgPercentToScreen(r);
-        if(x>=R.L && x<=R.L+R.W && y>=R.T && y<=R.T+R.H) return true;
-      }
-      return false;
+      const list=HOTSPOTS_IMG[index]||[];
+      return list.some(r=>{
+        const R=imgPercentToScreen(r);
+        return (x>=R.L && x<=R.L+R.W && y>=R.T && y<=R.T+R.H);
+      });
     }
 
-    // タップ／クリック
-    document.addEventListener('click', e => { if(hit(e.clientX,e.clientY)) next(); });
+    document.addEventListener('click', e=>{ if(hit(e.clientX,e.clientY)) next(); });
     let sx=0;
-    document.addEventListener('touchstart', e => { sx = e.changedTouches[0].clientX; }, {passive:true});
-    document.addEventListener('touchend', e => {
-      const t = e.changedTouches[0];
-      const dx = t.clientX - sx;
-      if(Math.abs(dx) > 50){ dx < 0 ? next() : prev(); return; }
-      if(hit(t.clientX, t.clientY)) next();
+    document.addEventListener('touchstart', e=>{ sx=e.changedTouches[0].clientX; }, {passive:true});
+    document.addEventListener('touchend', e=>{
+      const t=e.changedTouches[0], dx=t.clientX-sx;
+      if(Math.abs(dx)>50){ dx<0?next():prev(); return; }
+      if(hit(t.clientX,t.clientY)) next();
     }, {passive:true});
 
-    // 秘密：最初の画像で10回タップすると calibrate.html へ
-    let secretCount=0;
-    function secretTap(){ if(index===0){ secretCount++; if(secretCount>=10) location.href='./calibrate.html'; } }
+    // 裏モード: 最初の画像を10回タップすると calibrate.html へ
+    let secret=0;
+    function secretTap(){ if(index===0){ secret++; if(secret>=10) location.href='./calibrate.html'; } }
     document.addEventListener('click', secretTap);
     document.addEventListener('touchend', secretTap, {passive:true});
 
-    // 初期表示
     show();
-
-    // PWA ServiceWorker
     if("serviceWorker" in navigator){
-      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(console.error));
+      addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(console.error));
     }
   </script>
 </body>
