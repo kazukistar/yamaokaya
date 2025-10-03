@@ -19,7 +19,7 @@
       color: #000;
     }
 
-    /* 背景画像（全画面・cover） */
+    /* 背景画像 */
     #img {
       position: fixed;
       top: 0;
@@ -29,7 +29,7 @@
       object-fit: cover;
     }
 
-    /* 当たり枠（濃いブルーで視認性アップ） */
+    /* 当たり枠 */
     .box {
       position: fixed;
       border: 3px solid #0b5fff;
@@ -37,7 +37,7 @@
       box-shadow: 0 0 0 1px rgba(0,0,0,.2) inset;
     }
 
-    /* 上情報・右JSON・下操作 */
+    /* 上情報・右JSON */
     .pill {
       position: fixed;
       left: 8px;
@@ -47,6 +47,7 @@
       border-radius: 12px;
       padding: 6px 10px;
       font-size: 14px;
+      white-space: nowrap;
     }
 
     .code {
@@ -64,6 +65,7 @@
       white-space: pre;
     }
 
+    /* 下部UI配置 */
     .ui {
       position: fixed;
       left: 8px;
@@ -78,20 +80,23 @@
     .row {
       display: flex;
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 8px;
+      flex-wrap: nowrap;       /* ← 折り返し禁止 */
+      overflow-x: auto;        /* ← 万一は横スクロール */
     }
 
     .btn {
       background: #1111;
       color: #000;
       border: 1px solid #0003;
-      padding: 10px 14px;
-      border-radius: 12px;
-      font-size: 16px;
+      padding: 6px 10px;       /* ← 小さめに */
+      border-radius: 8px;
+      font-size: 14px;
+      white-space: nowrap;     /* ← 文字を折り返さない */
+      flex-shrink: 0;          /* ← 狭くても潰れない */
     }
 
-    .btn:active { transform: scale(.98) }
+    .btn:active { transform: scale(.96) }
 
     .slider {
       display: flex;
@@ -119,7 +124,7 @@
   <pre class="code" id="code"></pre>
 
   <div class="ui">
-    <!-- 左：画像切替＆保存/戻る -->
+    <!-- 左：画像切替＆保存/戻る（1行で並ぶ） -->
     <div class="row">
       <button class="btn" id="imgPrev">画像 ←</button>
       <div>画像 <span id="imgIndexLabel">1</span> / <span id="imgCountLabel">4</span></div>
@@ -186,7 +191,7 @@
     const list = () => store[imgIndex] || (store[imgIndex] = []);
     function cur(){
       const L = list();
-      if (L.length === 0) L.push({x:10, y:20, w:80, h:12});
+      if (L.length === 0) L.push({x:10, y:20, w:80, h:12}); // ← 初期位置を上寄りに
       return L[0];
     }
 
