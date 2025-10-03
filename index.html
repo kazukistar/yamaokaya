@@ -4,121 +4,84 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Swipe Viewer</title>
-
-  <!-- PWA 関連 -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
   <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    #img {
-      position: fixed;
-      /* 安全領域を超えて全画面に広げる */
-      left:   calc(0px - env(safe-area-inset-left));
-      top:    calc(0px - env(safe-area-inset-top));
-      width:  calc(100vw + env(safe-area-inset-left) + env(safe-area-inset-right));
-      height: calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
-      object-fit: cover; /* 多少切れてもいいから全画面 */
-    }
-    .hs-debug {
-      position: fixed;
-      border: 2px dashed rgba(0,255,255,.7);
-      background: rgba(0,255,255,.15);
-      pointer-events: none;
+    html,body{margin:0;height:100%;background:#000;overflow:hidden;-webkit-user-select:none;user-select:none}
+    #img{
+      position:fixed;
+      left:calc(0px - env(safe-area-inset-left));
+      top:calc(0px - env(safe-area-inset-top));
+      width:calc(100vw + env(safe-area-inset-left) + env(safe-area-inset-right));
+      height:calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+      object-fit:cover;
     }
   </style>
 </head>
 <body>
   <img id="img" src="./images/1.jpg" />
-
   <script>
-    // ====== 画像リスト ======
-    const IMAGE_COUNT = 4; // ← 枚数に応じて変更
-    const IMAGES = Array.from({length: IMAGE_COUNT}, (_, i) => `./images/${i+1}.jpg`);
+    // === 設定 ===
+    const IMAGE_COUNT = 4; // ← 枚数に合わせて
+    const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
 
-    // ====== デバッグモード（trueにすると枠が見える） ======
-    const DEBUG = false;
-
-    // ====== 各画像ごとのホットスポット（タップで次へ進むエリア） ======
-    // インデックス: 0=1.jpg, 1=2.jpg, ...
-    const HOTSPOTS = {
-      0: [ // 1.jpg
-        { left:"10%", top:"60%", width:"80%", height:"12%" } // 例: 「使う」ボタン
-      ],
-      1: [ // 2.jpg
-        // 必要なら追加
-      ],
-      2: [ // 3.jpg
-      ],
-      3: [ // 4.jpg
-      ]
-    };
+    // === 指定エリア（画像座標%）===
+    // 0=1.jpg, 1=2.jpg, ...
+    const HOTSPOTS_IMG = JSON.parse(localStorage.getItem('tapnext.hotspots')||'{}');
 
     let index = 0;
-    const imgEl = document.getElementById("img");
+    const imgEl = document.getElementById('img');
 
-    function clamp(i){ return (i + IMAGES.length) % IMAGES.length; }
-    function show(){ imgEl.src = IMAGES[index]; if(DEBUG) renderDebug(); }
+    function clamp(i){ return (i+IMAGES.length)%IMAGES.length; }
+    function show(){ imgEl.src = IMAGES[index]; }
     function next(){ index = clamp(index+1); show(); }
     function prev(){ index = clamp(index-1); show(); }
 
-    // タップ判定
-    function inRect(rect, x, y){
-      const toPx = (v, full) => (typeof v==="string" && v.endsWith("%"))
-        ? parseFloat(v)*0.01*full
-        : parseFloat(v);
-      const vw=window.innerWidth, vh=window.innerHeight;
-      const L=toPx(rect.left,vw), T=toPx(rect.top,vh);
-      const W=toPx(rect.width,vw), H=toPx(rect.height,vh);
-      return (x>=L && x<=L+W && y>=T && y<=T+H);
+    // タップ→ホットスポットヒットでnext
+    function getRectOnScreen(r){
+      const vw=innerWidth, vh=innerHeight;
+      const iw=imgEl.naturalWidth||1, ih=imgEl.naturalHeight||1;
+      const s=Math.max(vw/iw, vh/ih);
+      const dw=iw*s, dh=ih*s, dx=(vw-dw)/2, dy=(vh-dh)/2;
+      const L = dx + (r.x/100)*dw, T = dy + (r.y/100)*dh;
+      const W = (r.w/100)*dw, H=(r.h/100)*dh;
+      return {L,T,W,H};
     }
-    function handleTap(x,y){
-      const list = HOTSPOTS[index]||[];
+    function hit(x,y){
+      const list=(HOTSPOTS_IMG[index]||[]);
       for(const r of list){
-        if(inRect(r,x,y)){ next(); return; }
+        const R=getRectOnScreen(r);
+        if(x>=R.L&&x<=R.L+R.W&&y>=R.T&&y<=R.T+R.H) return true;
       }
+      return false;
     }
-    document.addEventListener("click", e=>handleTap(e.clientX,e.clientY));
-    document.addEventListener("touchend", e=>{
-      const t=e.changedTouches[0]; handleTap(t.clientX,t.clientY);
-    }, {passive:true});
 
-    // スワイプ（左→次、右→前）
-    let startX=0;
-    document.addEventListener("touchstart", e=>{startX=e.changedTouches[0].clientX;}, {passive:true});
-    document.addEventListener("touchend", e=>{
-      const dx=e.changedTouches[0].clientX - startX;
-      if(Math.abs(dx)>50){ dx<0 ? next() : prev(); }
-    }, {passive:true});
+    document.addEventListener('click', e=>{
+      if(hit(e.clientX,e.clientY)) next();
+    });
 
-    // デバッグ枠描画
-    function renderDebug(){
-      document.querySelectorAll(".hs-debug").forEach(n=>n.remove());
-      const list=HOTSPOTS[index]||[];
-      for(const r of list){
-        const el=document.createElement("div");
-        el.className="hs-debug";
-        el.style.left=r.left; el.style.top=r.top;
-        el.style.width=r.width; el.style.height=r.height;
-        document.body.appendChild(el);
-      }
-    }
+    // スワイプ（左→次 / 右→前）
+    let sx=0; document.addEventListener('touchstart',e=>{sx=e.changedTouches[0].clientX},{passive:true});
+    document.addEventListener('touchend',e=>{
+      const t=e.changedTouches[0], dx=t.clientX-sx;
+      if(Math.abs(dx)>50){ dx<0?next():prev(); return; }
+      if(hit(t.clientX,t.clientY)) next();
+    },{passive:true});
+
+    // 隠し：最初の画像を10回タップで校正モードへ
+    let secretCount=0;
+    function secretTap(){ if(index===0){ secretCount++; if(secretCount>=10){ location.href='./calibrate.html'; } } }
+    document.addEventListener('click', secretTap);
+    document.addEventListener('touchend', secretTap, {passive:true});
 
     // 初期表示
     show();
 
-    // SW 登録
-    if("serviceWorker" in navigator){
-      window.addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(console.error));
+    // SW
+    if('serviceWorker'in navigator){
+      addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));
     }
   </script>
 </body>
