@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calibrate (Bottom 30%)</title>
+  <title>Calibrate (Mask Top)</title>
   <meta name="theme-color" content="#ffffff" />
   <style>
+    :root { --mask-extra: 20px; } /* 上部を少し広めにマスク */
+
     body {
       font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
       font-weight: bold;
@@ -26,6 +28,17 @@
       height: 100vh;
       object-fit: cover;
       z-index: 0;
+    }
+
+    /* ダイナミックアイランド＋時計までマスク */
+    .top-mask {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: calc(env(safe-area-inset-top, 44px) + var(--mask-extra));
+      background: #fff;
+      z-index: 30;
     }
 
     .box {
@@ -49,7 +62,7 @@
       z-index: 10;
     }
 
-    /* 画像切り替え：縦配置（上半分の左側） */
+    /* 画像切替：縦配置 */
     .img-controls {
       position: fixed;
       top: 15%;
@@ -65,13 +78,13 @@
       z-index: 10;
     }
 
-    /* 下部30%のスライダーUI */
+    /* 下30%のスライダーUI */
     .ui {
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
-      height: 30%; /* ← 下30%に変更 */
+      height: 30%;
       background: rgba(255,255,255,0.9);
       border-top: 2px solid #0003;
       display: flex;
@@ -122,16 +135,15 @@
 </head>
 <body>
   <img id="img" src="./images/1.jpg" alt="">
+  <div class="top-mask"></div>
   <div class="pill" id="info"></div>
 
-  <!-- 上半分左側の画像切り替えボタン（縦配置） -->
   <div class="img-controls">
     <button class="btn" id="imgPrev">↑ 前へ</button>
     <div>画像 <span id="imgIndexLabel">1</span> / <span id="imgCountLabel">4</span></div>
     <button class="btn" id="imgNext">↓ 次へ</button>
   </div>
 
-  <!-- 下30%にスライダーUI -->
   <div class="ui">
     <div class="slider">
       <label for="xRange">X</label>
