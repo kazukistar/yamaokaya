@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Tap Next</title>
+  <title>偽岡屋</title>
 
   <!-- アイコン設定 -->
   <link rel="apple-touch-icon" href="./icons/icon-180.png">
@@ -86,9 +86,9 @@
       if (Math.abs(dx)>50) {
         imgIndex = (dx<0)?(imgIndex+1)%IMAGE_COUNT:(imgIndex-1+IMAGE_COUNT)%IMAGE_COUNT;
         showImage();
-      } else handleTap(t.clientX,t.clientY);
+      } else handleTap(t.clientX, t.clientY);
     }, {passive:true});
-    document.addEventListener('click', e=>{ handleTap(e.clientX,e.clientY); });
+    document.addEventListener('click', e=>{ handleTap(e.clientX, e.clientY); });
 
     let secretCount=0, secretTimer=null;
     showImage();
