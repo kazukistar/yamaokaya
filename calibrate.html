@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calibrate (Mask Top)</title>
+  <title>Calibrate</title>
   <meta name="theme-color" content="#ffffff" />
   <style>
-    :root { --mask-extra: 20px; } /* 上部を少し広めにマスク */
+    :root { --mask-extra: 20px; } /* 上部の白マスクを広げる量 */
 
     body {
       font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
@@ -30,7 +30,7 @@
       z-index: 0;
     }
 
-    /* ダイナミックアイランド＋時計までマスク */
+    /* ダイナミックアイランド＋時計部分までマスク */
     .top-mask {
       position: fixed;
       top: 0;
@@ -39,13 +39,13 @@
       height: calc(env(safe-area-inset-top, 44px) + var(--mask-extra));
       background: #fff;
       z-index: 30;
+      pointer-events: none; /* タップ操作を通す */
     }
 
     .box {
       position: fixed;
       border: 3px solid #0b5fff;
       background: rgba(11,95,255,0.25);
-      box-shadow: 0 0 0 1px rgba(0,0,0,.2) inset;
       z-index: 1;
     }
 
@@ -58,18 +58,16 @@
       border-radius: 12px;
       padding: 6px 10px;
       font-size: 14px;
-      white-space: nowrap;
       z-index: 10;
     }
 
-    /* 画像切替：縦配置 */
+    /* 画像切替ボタン：縦に配置 */
     .img-controls {
       position: fixed;
       top: 15%;
       left: 8px;
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 10px;
       background: rgba(255,255,255,0.85);
       padding: 8px 10px;
@@ -89,7 +87,6 @@
       border-top: 2px solid #0003;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start;
       align-items: center;
       gap: 10px;
       padding: 10px;
@@ -105,9 +102,7 @@
       font-size: 14px;
       font-weight: bold;
       white-space: nowrap;
-      flex-shrink: 0;
     }
-
     .btn:active {
       background: #eee;
       transform: scale(.96);
@@ -119,18 +114,9 @@
       gap: 10px;
       width: 90%;
     }
-
-    .slider label {
-      min-width: 2em;
-      text-align: right;
-    }
-
-    .slider input[type="range"] { flex: 1 }
-
-    .slider output {
-      min-width: 4em;
-      text-align: left;
-    }
+    .slider label { min-width: 2em; text-align: right; }
+    .slider input[type="range"] { flex: 1; }
+    .slider output { min-width: 4em; text-align: left; }
   </style>
 </head>
 <body>
@@ -176,29 +162,26 @@
     const IMAGE_COUNT = 4;
     const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
     const KEY = 'tapnext.hotspots';
-
     const store = JSON.parse(localStorage.getItem(KEY) || '{}');
     let imgIndex = 0;
 
     const imgEl = document.getElementById('img');
     const info  = document.getElementById('info');
-
     const imgPrev = document.getElementById('imgPrev');
     const imgNext = document.getElementById('imgNext');
     const saveBtn = document.getElementById('save');
     const backBtn = document.getElementById('back');
-
     const imgIndexLabel = document.getElementById('imgIndexLabel');
     const imgCountLabel = document.getElementById('imgCountLabel');
 
-    const xRange = document.getElementById('xRange');
-    const yRange = document.getElementById('yRange');
-    const wRange = document.getElementById('wRange');
-    const hRange = document.getElementById('hRange');
-    const xOut = document.getElementById('xOut');
-    const yOut = document.getElementById('yOut');
-    const wOut = document.getElementById('wOut');
-    const hOut = document.getElementById('hOut');
+    const xRange=document.getElementById('xRange');
+    const yRange=document.getElementById('yRange');
+    const wRange=document.getElementById('wRange');
+    const hRange=document.getElementById('hRange');
+    const xOut=document.getElementById('xOut');
+    const yOut=document.getElementById('yOut');
+    const wOut=document.getElementById('wOut');
+    const hOut=document.getElementById('hOut');
 
     const clamp01 = v => Math.max(0, Math.min(100, v));
     const list = () => store[imgIndex] || (store[imgIndex] = []);
@@ -235,10 +218,10 @@
       xRange.max = (100 - r.w).toFixed(1);
       yRange.max = (100 - r.h).toFixed(1);
 
-      xRange.value = r.x.toFixed(2); xOut.textContent = r.x.toFixed(1)+'%';
-      yRange.value = r.y.toFixed(2); yOut.textContent = r.y.toFixed(1)+'%';
-      wRange.value = r.w.toFixed(2); wOut.textContent = r.w.toFixed(1)+'%';
-      hRange.value = r.h.toFixed(2); hOut.textContent = r.h.toFixed(1)+'%';
+      xRange.value = r.x; xOut.textContent = r.x.toFixed(1)+'%';
+      yRange.value = r.y; yOut.textContent = r.y.toFixed(1)+'%';
+      wRange.value = r.w; wOut.textContent = r.w.toFixed(1)+'%';
+      hRange.value = r.h; hOut.textContent = r.h.toFixed(1)+'%';
 
       const s = imgToScreen(r);
       const el = document.createElement('div');
@@ -263,16 +246,8 @@
 
     xRange.oninput = ()=>{ const r=cur(); r.x = clamp01(parseFloat(xRange.value)); render(); };
     yRange.oninput = ()=>{ const r=cur(); r.y = clamp01(parseFloat(yRange.value)); render(); };
-    wRange.oninput = ()=>{
-      const r=cur(); r.w = clamp01(parseFloat(wRange.value));
-      if (r.x > 100 - r.w) r.x = 100 - r.w;
-      render();
-    };
-    hRange.oninput = ()=>{
-      const r=cur(); r.h = clamp01(parseFloat(hRange.value));
-      if (r.y > 100 - r.h) r.y = 100 - r.h;
-      render();
-    };
+    wRange.oninput = ()=>{ const r=cur(); r.w = clamp01(parseFloat(wRange.value)); if(r.x>100-r.w) r.x=100-r.w; render(); };
+    hRange.oninput = ()=>{ const r=cur(); r.h = clamp01(parseFloat(hRange.value)); if(r.y>100-r.h) r.y=100-r.h; render(); };
 
     imgEl.addEventListener('load', render);
     showImage();
