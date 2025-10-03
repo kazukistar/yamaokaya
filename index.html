@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Swipe Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#000000">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tap Next</title>
+  <meta name="theme-color" content="#ffffff">
   <style>
-    html, body {
+    body {
       margin: 0;
       height: 100%;
-      background: #000;
+      background: #fff;
       overflow: hidden;
       -webkit-user-select: none;
       user-select: none;
@@ -23,68 +20,73 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: cover; /* 全画面、多少切れてもOK */
+      object-fit: cover;
+      z-index: 0;
+    }
+    /* ← 追加：ダイナミックアイランド領域を白で塗りつぶす */
+    .top-mask {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: env(safe-area-inset-top, 44px);
+      background: #fff;
+      z-index: 10;
     }
   </style>
 </head>
 <body>
-  <img id="img" src="./images/1.jpg" />
+  <img id="img" src="./images/1.jpg" alt="">
+  <div class="top-mask"></div>
+
   <script>
-    const IMAGE_COUNT = 4; // 枚数
-    const IMAGES = Array.from({length: IMAGE_COUNT}, (_, i) => `./images/${i+1}.jpg`);
-    const HOTSPOTS_IMG = JSON.parse(localStorage.getItem('tapnext.hotspots') || '{}');
+    const IMAGE_COUNT = 4;
+    const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
+    const KEY = 'tapnext.hotspots';
+    let imgIndex = 0;
 
-    let index = 0;
     const imgEl = document.getElementById('img');
+    const store = JSON.parse(localStorage.getItem(KEY) || '{}');
 
-    function clamp(i){ return (i+IMAGES.length)%IMAGES.length; }
-    function show(){ imgEl.src = IMAGES[index]; }
-    function next(){ index = clamp(index+1); show(); }
-    function prev(){ index = clamp(index-1); show(); }
+    function showImage() {
+      imgEl.src = IMAGES[imgIndex];
+    }
 
-    function getDispRect(){
-      const vw=innerWidth, vh=innerHeight;
-      const iw=imgEl.naturalWidth||1, ih=imgEl.naturalHeight||1;
-      const s=Math.max(vw/iw, vh/ih);
-      const dw=iw*s, dh=ih*s, dx=(vw-dw)/2, dy=(vh-dh)/2;
-      return {x:dx,y:dy,w:dw,h:dh};
-    }
-    function imgPercentToScreen(r){
-      const R=getDispRect();
-      return {
-        L: R.x+(r.x/100)*R.w,
-        T: R.y+(r.y/100)*R.h,
-        W: (r.w/100)*R.w,
-        H: (r.h/100)*R.h
-      };
-    }
     function hit(x,y){
-      const list=HOTSPOTS_IMG[index]||[];
-      return list.some(r=>{
-        const R=imgPercentToScreen(r);
-        return (x>=R.L && x<=R.L+R.W && y>=R.T && y<=R.T+R.H);
-      });
+      const rect = imgEl.getBoundingClientRect();
+      const nx = ((x-rect.left)/rect.width)*100;
+      const ny = ((y-rect.top)/rect.height)*100;
+      const list = store[imgIndex] || [];
+      return list.find(r =>
+        nx >= r.x && nx <= r.x+r.w &&
+        ny >= r.y && ny <= r.y+r.h
+      );
     }
 
-    document.addEventListener('click', e=>{ if(hit(e.clientX,e.clientY)) next(); });
-    let sx=0;
-    document.addEventListener('touchstart', e=>{ sx=e.changedTouches[0].clientX; }, {passive:true});
-    document.addEventListener('touchend', e=>{
-      const t=e.changedTouches[0], dx=t.clientX-sx;
-      if(Math.abs(dx)>50){ dx<0?next():prev(); return; }
-      if(hit(t.clientX,t.clientY)) next();
-    }, {passive:true});
+    imgEl.addEventListener('click', e=>{
+      if(hit(e.clientX,e.clientY)){
+        imgIndex = (imgIndex+1) % IMAGE_COUNT;
+        showImage();
+      }
+    });
 
-    // 裏モード: 最初の画像を10回タップすると calibrate.html へ
-    let secret=0;
-    function secretTap(){ if(index===0){ secret++; if(secret>=10) location.href='./calibrate.html'; } }
-    document.addEventListener('click', secretTap);
-    document.addEventListener('touchend', secretTap, {passive:true});
+    let startX = null;
+    imgEl.addEventListener('touchstart', e=>{
+      startX = e.touches[0].clientX;
+    });
+    imgEl.addEventListener('touchend', e=>{
+      const endX = e.changedTouches[0].clientX;
+      if(startX - endX > 50){
+        imgIndex = (imgIndex+1) % IMAGE_COUNT;
+        showImage();
+      }
+      if(endX - startX > 50){
+        imgIndex = (imgIndex-1+IMAGE_COUNT) % IMAGE_COUNT;
+        showImage();
+      }
+    });
 
-    show();
-    if("serviceWorker" in navigator){
-      addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(console.error));
-    }
+    showImage();
   </script>
 </body>
 </html>
