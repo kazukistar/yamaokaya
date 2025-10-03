@@ -2,86 +2,96 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Swipe Viewer</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <style>
-    html,body{margin:0;height:100%;background:#000;overflow:hidden;-webkit-user-select:none;user-select:none}
-    #img{
-      position:fixed;
-      left:calc(0px - env(safe-area-inset-left));
-      top:calc(0px - env(safe-area-inset-top));
-      width:calc(100vw + env(safe-area-inset-left) + env(safe-area-inset-right));
-      height:calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
-      object-fit:cover;
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #img {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover; /* 多少切れても画面いっぱい */
     }
   </style>
 </head>
 <body>
   <img id="img" src="./images/1.jpg" />
   <script>
-    // === 設定 ===
-    const IMAGE_COUNT = 4; // ← 枚数に合わせて
-    const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
+    const IMAGE_COUNT = 4; // 枚数に合わせる
+    const IMAGES = Array.from({length: IMAGE_COUNT}, (_, i) => `./images/${i+1}.jpg`);
 
-    // === 指定エリア（画像座標%）===
-    // 0=1.jpg, 1=2.jpg, ...
-    const HOTSPOTS_IMG = JSON.parse(localStorage.getItem('tapnext.hotspots')||'{}');
+    // ローカル保存されたホットスポットを使う
+    const HOTSPOTS_IMG = JSON.parse(localStorage.getItem('tapnext.hotspots') || '{}');
 
     let index = 0;
     const imgEl = document.getElementById('img');
 
-    function clamp(i){ return (i+IMAGES.length)%IMAGES.length; }
+    function clamp(i){ return (i + IMAGES.length) % IMAGES.length; }
     function show(){ imgEl.src = IMAGES[index]; }
     function next(){ index = clamp(index+1); show(); }
     function prev(){ index = clamp(index-1); show(); }
 
-    // タップ→ホットスポットヒットでnext
-    function getRectOnScreen(r){
-      const vw=innerWidth, vh=innerHeight;
-      const iw=imgEl.naturalWidth||1, ih=imgEl.naturalHeight||1;
-      const s=Math.max(vw/iw, vh/ih);
-      const dw=iw*s, dh=ih*s, dx=(vw-dw)/2, dy=(vh-dh)/2;
-      const L = dx + (r.x/100)*dw, T = dy + (r.y/100)*dh;
-      const W = (r.w/100)*dw, H=(r.h/100)*dh;
+    // ホットスポット判定（画像の%座標基準）
+    function getDispRect(){
+      const vw = innerWidth, vh = innerHeight;
+      const iw = imgEl.naturalWidth || 1, ih = imgEl.naturalHeight || 1;
+      const s = Math.max(vw/iw, vh/ih);
+      const dw = iw*s, dh = ih*s, dx = (vw-dw)/2, dy = (vh-dh)/2;
+      return {x:dx, y:dy, w:dw, h:dh};
+    }
+    function imgPercentToScreen(r){
+      const R = getDispRect();
+      const L = R.x + (r.x/100)*R.w;
+      const T = R.y + (r.y/100)*R.h;
+      const W = (r.w/100)*R.w;
+      const H = (r.h/100)*R.h;
       return {L,T,W,H};
     }
     function hit(x,y){
-      const list=(HOTSPOTS_IMG[index]||[]);
+      const list = HOTSPOTS_IMG[index] || [];
       for(const r of list){
-        const R=getRectOnScreen(r);
-        if(x>=R.L&&x<=R.L+R.W&&y>=R.T&&y<=R.T+R.H) return true;
+        const R = imgPercentToScreen(r);
+        if(x>=R.L && x<=R.L+R.W && y>=R.T && y<=R.T+R.H) return true;
       }
       return false;
     }
 
-    document.addEventListener('click', e=>{
-      if(hit(e.clientX,e.clientY)) next();
-    });
+    // タップ／クリック
+    document.addEventListener('click', e => { if(hit(e.clientX,e.clientY)) next(); });
+    let sx=0;
+    document.addEventListener('touchstart', e => { sx = e.changedTouches[0].clientX; }, {passive:true});
+    document.addEventListener('touchend', e => {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx;
+      if(Math.abs(dx) > 50){ dx < 0 ? next() : prev(); return; }
+      if(hit(t.clientX, t.clientY)) next();
+    }, {passive:true});
 
-    // スワイプ（左→次 / 右→前）
-    let sx=0; document.addEventListener('touchstart',e=>{sx=e.changedTouches[0].clientX},{passive:true});
-    document.addEventListener('touchend',e=>{
-      const t=e.changedTouches[0], dx=t.clientX-sx;
-      if(Math.abs(dx)>50){ dx<0?next():prev(); return; }
-      if(hit(t.clientX,t.clientY)) next();
-    },{passive:true});
-
-    // 隠し：最初の画像を10回タップで校正モードへ
+    // 秘密：最初の画像で10回タップすると calibrate.html へ
     let secretCount=0;
-    function secretTap(){ if(index===0){ secretCount++; if(secretCount>=10){ location.href='./calibrate.html'; } } }
+    function secretTap(){ if(index===0){ secretCount++; if(secretCount>=10) location.href='./calibrate.html'; } }
     document.addEventListener('click', secretTap);
     document.addEventListener('touchend', secretTap, {passive:true});
 
     // 初期表示
     show();
 
-    // SW
-    if('serviceWorker'in navigator){
-      addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));
+    // PWA ServiceWorker
+    if("serviceWorker" in navigator){
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(console.error));
     }
   </script>
 </body>
