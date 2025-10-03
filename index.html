@@ -6,6 +6,8 @@
   <title>Tap Next</title>
   <meta name="theme-color" content="#ffffff">
   <style>
+    :root { --mask-extra: 20px; } /* ← ここで余分に隠す高さを調整 */
+
     body {
       margin: 0;
       height: 100%;
@@ -23,13 +25,13 @@
       object-fit: cover;
       z-index: 0;
     }
-    /* ← 追加：ダイナミックアイランド領域を白で塗りつぶす */
+    /* ダイナミックアイランド＋時計部分まで白くマスク */
     .top-mask {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
-      height: env(safe-area-inset-top, 44px);
+      height: calc(env(safe-area-inset-top, 44px) + var(--mask-extra));
       background: #fff;
       z-index: 10;
     }
