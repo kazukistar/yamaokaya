@@ -2,51 +2,64 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Swipe Viewer</title>
+
+  <!-- PWA 関連 -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <style>
-    html, body { margin:0; height:100%; background:#000; overflow:hidden; -webkit-user-select:none; user-select:none; }
-    #img {
-      position:fixed; inset:0;
-      width:100vw; height:100vh; object-fit:cover; /* 多少切れても全画面 */
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
     }
-    /* デバッグ用（枠を見たいときだけ表示） */
-    .hs-debug { position:fixed; border:2px dashed rgba(0,255,255,.7); background:rgba(0,255,255,.15); pointer-events:none; }
+    #img {
+      position: fixed;
+      /* 安全領域を超えて全画面に広げる */
+      left:   calc(0px - env(safe-area-inset-left));
+      top:    calc(0px - env(safe-area-inset-top));
+      width:  calc(100vw + env(safe-area-inset-left) + env(safe-area-inset-right));
+      height: calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
+      object-fit: cover; /* 多少切れてもいいから全画面 */
+    }
+    .hs-debug {
+      position: fixed;
+      border: 2px dashed rgba(0,255,255,.7);
+      background: rgba(0,255,255,.15);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <img id="img" src="./images/1.jpg" />
 
   <script>
-    // ====== 画像リスト（固定連番） ======
-    const IMAGE_COUNT = 4; // ← 枚数を必要に応じて変更
+    // ====== 画像リスト ======
+    const IMAGE_COUNT = 4; // ← 枚数に応じて変更
     const IMAGES = Array.from({length: IMAGE_COUNT}, (_, i) => `./images/${i+1}.jpg`);
 
-    // ====== デバッグ表示（当たり枠を可視化したいとき true） ======
+    // ====== デバッグモード（trueにすると枠が見える） ======
     const DEBUG = false;
 
-    // ====== 各画像の「押したら次へ」エリア定義 ======
-    // 画面（ビューポート）に対する％指定。複数可。
-    // 例：{ left:"20%", top:"65%", width:"60%", height:"9%" }
-    //   → 画面左から20%、上から65%の位置に幅60%、高さ9%の矩形
-    //
-    // インデックスは 0 が images/1.jpg、1 が images/2.jpg … に対応
+    // ====== 各画像ごとのホットスポット（タップで次へ進むエリア） ======
+    // インデックス: 0=1.jpg, 1=2.jpg, ...
     const HOTSPOTS = {
-      // 0: 1.jpg の例（スクショの「使う」ボタンあたりの想定。あとで微調整してね）
-      0: [
-        { left:"10%", top:"60%", width:"80%", height:"12%" }
+      0: [ // 1.jpg
+        { left:"10%", top:"60%", width:"80%", height:"12%" } // 例: 「使う」ボタン
       ],
-      // 1: 2.jpg
-      1: [
-        // 必要なら追加（なければ空配列か未定義でOK）
+      1: [ // 2.jpg
+        // 必要なら追加
       ],
-      // 2: 3.jpg
-      2: [
+      2: [ // 3.jpg
       ],
-      // 3: 4.jpg
-      3: [
+      3: [ // 4.jpg
       ]
     };
 
@@ -54,68 +67,58 @@
     const imgEl = document.getElementById("img");
 
     function clamp(i){ return (i + IMAGES.length) % IMAGES.length; }
-    function show(){ imgEl.src = IMAGES[index]; if (DEBUG) renderDebug(); }
-    function next(){ index = clamp(index + 1); show(); }
-    function prev(){ index = clamp(index - 1); show(); }
+    function show(){ imgEl.src = IMAGES[index]; if(DEBUG) renderDebug(); }
+    function next(){ index = clamp(index+1); show(); }
+    function prev(){ index = clamp(index-1); show(); }
 
-    // ====== タップで判定（ホットスポット内のみ反応） ======
-    function inRect(rect, x, y) {
-      // rectは{left,top,width,height}（% or px）
-      const toPx = (v, full) => (typeof v === "string" && v.endsWith("%"))
-          ? parseFloat(v)*0.01*full
-          : parseFloat(v);
-      const vw = window.innerWidth, vh = window.innerHeight;
-      const L = toPx(rect.left, vw);
-      const T = toPx(rect.top, vh);
-      const W = toPx(rect.width, vw);
-      const H = toPx(rect.height, vh);
-      return (x >= L && x <= L+W && y >= T && y <= T+H);
+    // タップ判定
+    function inRect(rect, x, y){
+      const toPx = (v, full) => (typeof v==="string" && v.endsWith("%"))
+        ? parseFloat(v)*0.01*full
+        : parseFloat(v);
+      const vw=window.innerWidth, vh=window.innerHeight;
+      const L=toPx(rect.left,vw), T=toPx(rect.top,vh);
+      const W=toPx(rect.width,vw), H=toPx(rect.height,vh);
+      return (x>=L && x<=L+W && y>=T && y<=T+H);
     }
-
-    function handleTap(x, y){
-      const list = HOTSPOTS[index] || [];
-      for (const r of list){
-        if (inRect(r, x, y)) { next(); return; }
+    function handleTap(x,y){
+      const list = HOTSPOTS[index]||[];
+      for(const r of list){
+        if(inRect(r,x,y)){ next(); return; }
       }
-      // ホットスポット外は何もしない（誤タップ防止）
     }
-
-    // クリック（PC確認用） & タップ（iPhone）
-    document.addEventListener("click", (e)=> handleTap(e.clientX, e.clientY));
-    document.addEventListener("touchend", (e)=>{
-      const t = e.changedTouches[0];
-      handleTap(t.clientX, t.clientY);
+    document.addEventListener("click", e=>handleTap(e.clientX,e.clientY));
+    document.addEventListener("touchend", e=>{
+      const t=e.changedTouches[0]; handleTap(t.clientX,t.clientY);
     }, {passive:true});
 
-    // ====== スワイプ操作（左→次 / 右→前） ======
+    // スワイプ（左→次、右→前）
     let startX=0;
-    document.addEventListener("touchstart",(e)=>{ startX = e.changedTouches[0].clientX; }, {passive:true});
-    document.addEventListener("touchend",(e)=>{
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+    document.addEventListener("touchstart", e=>{startX=e.changedTouches[0].clientX;}, {passive:true});
+    document.addEventListener("touchend", e=>{
+      const dx=e.changedTouches[0].clientX - startX;
+      if(Math.abs(dx)>50){ dx<0 ? next() : prev(); }
     }, {passive:true});
 
-    // ====== デバッグ枠描画 ======
+    // デバッグ枠描画
     function renderDebug(){
-      // 既存を消す
       document.querySelectorAll(".hs-debug").forEach(n=>n.remove());
-      if (!DEBUG) return;
-      const list = HOTSPOTS[index] || [];
-      for (const r of list){
-        const el = document.createElement("div");
-        el.className = "hs-debug";
-        el.style.left   = r.left;
-        el.style.top    = r.top;
-        el.style.width  = r.width;
-        el.style.height = r.height;
+      const list=HOTSPOTS[index]||[];
+      for(const r of list){
+        const el=document.createElement("div");
+        el.className="hs-debug";
+        el.style.left=r.left; el.style.top=r.top;
+        el.style.width=r.width; el.style.height=r.height;
         document.body.appendChild(el);
       }
     }
 
-    // 初期表示 & SW登録
+    // 初期表示
     show();
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(console.error));
+
+    // SW 登録
+    if("serviceWorker" in navigator){
+      window.addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(console.error));
     }
   </script>
 </body>
