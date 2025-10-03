@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tap Next PWA</title>
+  <title>Swipe Viewer</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#000000">
   <style>
@@ -11,17 +11,9 @@
       margin: 0;
       height: 100%;
       background: #000;
-      color: #fff;
-      -webkit-user-select: none; user-select: none;
-      touch-action: manipulation;
       overflow: hidden;
-    }
-    .stage {
-      position: fixed;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      background: #000;
+      -webkit-user-select: none;
+      user-select: none;
     }
     #img {
       position: fixed;
@@ -30,36 +22,22 @@
       width: 100vw;
       height: 100vh;
       object-fit: cover; /* 多少切れても画面いっぱい */
-      display: block;
-    }
-    .hint {
-      position: fixed;
-      left: 0; right: 0; bottom: 10px;
-      text-align: center; font-size: 14px; opacity: .6;
     }
   </style>
 </head>
 <body>
-  <div class="stage" id="stage">
-    <img id="img" alt="slide" src="./images/img1.jpg" />
-  </div>
-  <div class="hint">👉 左右にスワイプして画像を切り替え</div>
+  <img id="img" src="./images/1.jpg" />
 
   <script>
-    // ---- 画像リストをここに書き換え ----
-    const IMAGES = [
-      "./images/img1.jpg",
-      "./images/img2.jpg",
-      "./images/img3.jpg"
-    ];
-    // ------------------------------------
+    // --- 数字のファイル名を自動でリスト化する ---
+    const imageCount = 4; // ← 画像の枚数をここに書く
+    const IMAGES = Array.from({length: imageCount}, (_, i) => `./images/${i+1}.jpg`);
 
     let index = 0;
     const imgEl = document.getElementById("img");
 
     function show() {
       imgEl.src = IMAGES[index];
-      localStorage.setItem("tapNext.index", String(index)); // 履歴保存
     }
 
     function clamp(i) {
@@ -69,28 +47,22 @@
     function next() { index = clamp(index + 1); show(); }
     function prev() { index = clamp(index - 1); show(); }
 
-    // スワイプ検出
+    // --- スワイプ検出 ---
     let touchStartX = 0;
     document.addEventListener("touchstart", (e) => {
       touchStartX = e.changedTouches[0].clientX;
     });
     document.addEventListener("touchend", (e) => {
       const dx = e.changedTouches[0].clientX - touchStartX;
-      if (Math.abs(dx) > 50) { // 50px以上ならスワイプ
-        if (dx < 0) {
-          next(); // 左にスワイプ → 次
-        } else {
-          prev(); // 右にスワイプ → 前
-        }
+      if (Math.abs(dx) > 50) {
+        if (dx < 0) next(); else prev();
       }
     });
 
-    // 前回の続きから開始
-    const saved = parseInt(localStorage.getItem("tapNext.index") || "0", 10);
-    if (!Number.isNaN(saved)) index = clamp(saved);
+    // --- 初期表示 ---
     show();
 
-    // PWA用のService Worker登録
+    // --- PWA用 SW登録 ---
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js").catch(console.error);
