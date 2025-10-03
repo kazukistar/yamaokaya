@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calibrate</title>
+  <title>偽岡屋 - 座標調整</title>
   <meta name="theme-color" content="#ffffff" />
   <style>
-    :root { --mask-extra: 20px; } /* 上部の白マスクを広げる量 */
+    :root { --mask-extra: 20px; }
 
     body {
       font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
@@ -30,7 +30,6 @@
       z-index: 0;
     }
 
-    /* ダイナミックアイランド＋時計部分までマスク */
     .top-mask {
       position: fixed;
       top: 0;
@@ -39,7 +38,7 @@
       height: calc(env(safe-area-inset-top, 44px) + var(--mask-extra));
       background: #fff;
       z-index: 30;
-      pointer-events: none; /* タップ操作を通す */
+      pointer-events: none;
     }
 
     .box {
@@ -61,7 +60,6 @@
       z-index: 10;
     }
 
-    /* 画像切替ボタン：縦に配置 */
     .img-controls {
       position: fixed;
       top: 15%;
@@ -76,7 +74,6 @@
       z-index: 10;
     }
 
-    /* 下30%のスライダーUI */
     .ui {
       position: fixed;
       left: 0;
@@ -103,10 +100,7 @@
       font-weight: bold;
       white-space: nowrap;
     }
-    .btn:active {
-      background: #eee;
-      transform: scale(.96);
-    }
+    .btn:active { background: #eee; transform: scale(.96); }
 
     .slider {
       display: flex;
