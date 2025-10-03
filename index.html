@@ -14,28 +14,23 @@
       color: #fff;
       -webkit-user-select: none; user-select: none;
       touch-action: manipulation;
+      overflow: hidden;
     }
     .stage {
       position: fixed;
       inset: 0;
       display: grid;
       place-items: center;
-      overflow: hidden;
       background: #000;
     }
     #img {
-      max-width: 100vw;
-      max-height: 100vh;
-      width: auto;
-      height: auto;
-      object-fit: contain;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover; /* 多少切れても画面いっぱい */
       display: block;
-    }
-    .hotspot {
-      position: absolute;
-      border: none; /* debug: set 1px dashed rgba(255,255,255,.3) to see areas */
-      background: transparent;
-      cursor: pointer;
     }
     .hint {
       position: fixed;
@@ -47,42 +42,24 @@
 <body>
   <div class="stage" id="stage">
     <img id="img" alt="slide" src="./images/img1.jpg" />
-    <!-- Default hotspots: left & right half both go NEXT. 
-         If you want left=prev, change data-action="prev" on the left hotspot. -->
-    <button class="hotspot" id="hs-left"  style="left:0; top:0; width:50vw; height:100vh"  data-action="next" aria-label="left area"></button>
-    <button class="hotspot" id="hs-right" style="right:0; top:0; width:50vw; height:100vh" data-action="next" aria-label="right area"></button>
   </div>
-  <div class="hint">画面の左右エリアをタップすると次の画像に進みます（長押しで前へ）</div>
+  <div class="hint">👉 左右にスワイプして画像を切り替え</div>
 
   <script>
-    // ---- Config: list your images here ----
+    // ---- 画像リストをここに書き換え ----
     const IMAGES = [
-      "./images/1.jpg",
-      "./images/2.jpg",
-      "./images/3.jpg",
-      "./images/4.jpg"
+      "./images/img1.jpg",
+      "./images/img2.jpg",
+      "./images/img3.jpg"
     ];
-    // Optional: per-image custom hotspots (array of {left,top,width,height,action})
-    // If provided for the current image index, they replace the two default halves.
-    const CUSTOM_HOTSPOTS = {
-      // 0: [
-      //   { left: "10%", top:"10%", width:"30%", height:"30%", action:"next" },
-      //   { left: "60%", top:"60%", width:"30%", height:"30%", action:"next" },
-      // ]
-    };
-    // --------------------------------------
+    // ------------------------------------
 
     let index = 0;
     const imgEl = document.getElementById("img");
-    const stage = document.getElementById("stage");
-    const left = document.getElementById("hs-left");
-    const right = document.getElementById("hs-right");
 
     function show() {
       imgEl.src = IMAGES[index];
-      setupHotspots();
-      // Save progress for resume
-      localStorage.setItem("tapNext.index", String(index));
+      localStorage.setItem("tapNext.index", String(index)); // 履歴保存
     }
 
     function clamp(i) {
@@ -92,64 +69,28 @@
     function next() { index = clamp(index + 1); show(); }
     function prev() { index = clamp(index - 1); show(); }
 
-    // Long-press to go prev (mobile-friendly)
-    function wireLongPress(el, onTap, onLong) {
-      let t, isLong = false;
-      const start = () => {
-        isLong = false;
-        t = setTimeout(() => { isLong = true; onLong(); }, 500);
-      };
-      const end = () => {
-        clearTimeout(t);
-        if (!isLong) onTap();
-      };
-      el.addEventListener("touchstart", start, {passive:true});
-      el.addEventListener("mousedown", start);
-      el.addEventListener("touchend", end);
-      el.addEventListener("mouseup", end);
-      el.addEventListener("mouseleave", () => clearTimeout(t));
-    }
-
-    function clearCustomHotspots() {
-      document.querySelectorAll(".hs-dyn").forEach(n => n.remove());
-    }
-
-    function setupHotspots() {
-      clearCustomHotspots();
-      const list = CUSTOM_HOTSPOTS[index];
-      if (Array.isArray(list) && list.length) {
-        // Hide defaults
-        left.style.display = "none";
-        right.style.display = "none";
-        // Build custom areas
-        list.forEach((hs, i) => {
-          const btn = document.createElement("button");
-          btn.className = "hotspot hs-dyn";
-          btn.style.left = hs.left;
-          btn.style.top = hs.top;
-          btn.style.width = hs.width;
-          btn.style.height = hs.height;
-          btn.setAttribute("aria-label", `hotspot-${i}`);
-          stage.appendChild(btn);
-          wireLongPress(btn, () => (hs.action === "prev" ? prev() : next()),
-                             () => prev());
-        });
-      } else {
-        // Use defaults
-        left.style.display = "block";
-        right.style.display = "block";
-        // Action: by default both go next; change left to prev if you want
-        wireLongPress(left,  () => (left.dataset.action === "prev" ? prev() : next()), prev);
-        wireLongPress(right, () => (right.dataset.action === "prev" ? prev() : next()), prev);
+    // スワイプ検出
+    let touchStartX = 0;
+    document.addEventListener("touchstart", (e) => {
+      touchStartX = e.changedTouches[0].clientX;
+    });
+    document.addEventListener("touchend", (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 50) { // 50px以上ならスワイプ
+        if (dx < 0) {
+          next(); // 左にスワイプ → 次
+        } else {
+          prev(); // 右にスワイプ → 前
+        }
       }
-    }
+    });
 
-    // Resume last image if exists
+    // 前回の続きから開始
     const saved = parseInt(localStorage.getItem("tapNext.index") || "0", 10);
     if (!Number.isNaN(saved)) index = clamp(saved);
     show();
 
-    // Install PWA service worker
+    // PWA用のService Worker登録
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js").catch(console.error);
