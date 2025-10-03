@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calibrate (Sliders bottom + Vertical buttons)</title>
+  <title>Calibrate (Bottom 30%)</title>
   <meta name="theme-color" content="#ffffff" />
   <style>
     body {
@@ -49,22 +49,6 @@
       z-index: 10;
     }
 
-    .code {
-      position: fixed;
-      right: 8px;
-      top: 8px;
-      max-width: 60vw;
-      max-height: 40vh;
-      overflow: auto;
-      background: #fff;
-      border: 1px solid #00000033;
-      border-radius: 10px;
-      padding: 8px;
-      font-size: 12px;
-      white-space: pre;
-      z-index: 10;
-    }
-
     /* 画像切り替え：縦配置（上半分の左側） */
     .img-controls {
       position: fixed;
@@ -81,13 +65,13 @@
       z-index: 10;
     }
 
-    /* 下半分のスライダーUI */
+    /* 下部30%のスライダーUI */
     .ui {
       position: fixed;
       left: 0;
       right: 0;
       bottom: 0;
-      height: 50%;
+      height: 30%; /* ← 下30%に変更 */
       background: rgba(255,255,255,0.9);
       border-top: 2px solid #0003;
       display: flex;
@@ -139,7 +123,6 @@
 <body>
   <img id="img" src="./images/1.jpg" alt="">
   <div class="pill" id="info"></div>
-  <pre class="code" id="code"></pre>
 
   <!-- 上半分左側の画像切り替えボタン（縦配置） -->
   <div class="img-controls">
@@ -148,7 +131,7 @@
     <button class="btn" id="imgNext">↓ 次へ</button>
   </div>
 
-  <!-- 下半分にスライダーUI -->
+  <!-- 下30%にスライダーUI -->
   <div class="ui">
     <div class="slider">
       <label for="xRange">X</label>
@@ -187,7 +170,6 @@
 
     const imgEl = document.getElementById('img');
     const info  = document.getElementById('info');
-    const code  = document.getElementById('code');
 
     const imgPrev = document.getElementById('imgPrev');
     const imgNext = document.getElementById('imgNext');
@@ -256,7 +238,6 @@
       document.body.appendChild(el);
 
       info.textContent = `${imgIndex+1}/${IMAGE_COUNT}  矩形:1`;
-      code.textContent = JSON.stringify(store, null, 2);
     }
 
     imgPrev.onclick = ()=>{ imgIndex = (imgIndex-1+IMAGE_COUNT)%IMAGE_COUNT; showImage(); };
