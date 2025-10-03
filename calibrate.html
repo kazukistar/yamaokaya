@@ -3,51 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Calibrate (D-pad + Sliders)</title>
-  <meta name="theme-color" content="#ffffff">
+  <title>Calibrate (Sliders only)</title>
+  <meta name="theme-color" content="#ffffff" />
   <style>
-    /* 画面・画像 */
-    html,body{margin:0;height:100%;background:#fff;overflow:hidden;-webkit-user-select:none;user-select:none}
-    #img{
-      position:fixed; top:0; left:0; width:100vw; height:100vh;
-      object-fit:cover; touch-action:none;
+    /* 全体フォント：ゴシック系＋太字 */
+    body {
+      font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      font-weight: bold;
+      margin: 0;
+      height: 100%;
+      background: #fff;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+      color: #000;
     }
-    /* 選択矩形 */
-    .box{
-      position:fixed; border:2px solid #0b78e3; background:rgba(11,120,227,.12);
-      box-shadow: 0 0 0 1px rgba(11,120,227,.2) inset;
+
+    /* 背景画像（全画面・cover） */
+    #img {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
     }
-    /* 情報＆JSONビュー */
-    .pill{position:fixed; left:8px; top:8px; color:#000; background:rgba(255,255,255,.8);
-      font:14px/1.2 system-ui; padding:6px 10px; border-radius:12px; border:1px solid rgba(0,0,0,.25)}
-    .code{position:fixed; right:8px; top:8px; max-width:60vw; max-height:40vh; overflow:auto;
-      background:rgba(255,255,255,.9); color:#000; border:1px solid rgba(0,0,0,.3);
-      padding:6px 8px; border-radius:10px; font:12px/1.3 ui-monospace; white-space:pre}
-    /* 下部UI */
-    .ui{position:fixed; left:8px; right:8px; bottom:8px; display:grid; gap:10px;
-      grid-template-columns: 1fr 1fr 1fr; align-items:center}
-    .col{display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap}
 
-    .btn{background:#11111110; color:#000; border:1px solid #00000033; padding:10px 14px;
-      border-radius:12px; font:16px/1.2 system-ui; min-width:44px; text-align:center}
-    .btn:active{transform:scale(.98)}
-    .btn.small{padding:8px 10px; font-size:14px}
+    /* 当たり枠（濃いブルーで視認性アップ） */
+    .box {
+      position: fixed;
+      border: 3px solid #0b5fff;
+      background: rgba(11,95,255,0.25);
+      box-shadow: 0 0 0 1px rgba(0,0,0,.2) inset;
+    }
 
-    /* D-pad */
-    .dpad{display:grid; grid-template-columns: 48px 48px 48px; grid-template-rows:48px 48px 48px; gap:6px}
-    .dpad .sp{visibility:hidden}
-    .dpad .btn{min-width:auto; padding:0}
-    .dpad .btn span{display:inline-block; font-size:20px; line-height:48px; width:48px; height:48px}
+    /* 上情報・右JSON・下操作 */
+    .pill {
+      position: fixed;
+      left: 8px;
+      top: 8px;
+      background: #fff;
+      border: 1px solid #00000040;
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
 
-    /* スライダー */
-    .slider{display:flex; align-items:center; gap:8px; width:min(60vw, 360px)}
-    .slider label{min-width:3.5em; text-align:right; color:#000; font:14px system-ui}
-    .slider input[type="range"]{flex:1}
-    .slider output{min-width:3.5em; text-align:left; font:14px system-ui}
+    .code {
+      position: fixed;
+      right: 8px;
+      top: 8px;
+      max-width: 60vw;
+      max-height: 40vh;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid #00000033;
+      border-radius: 10px;
+      padding: 8px;
+      font-size: 12px;
+      white-space: pre;
+    }
 
-    /* 小さな選択 */
-    select, input[type="number"]{
-      font:14px system-ui; padding:6px 8px; border-radius:10px; border:1px solid #00000033; background:#fff; color:#000;
+    .ui {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #1111;
+      color: #000;
+      border: 1px solid #0003;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+
+    .btn:active { transform: scale(.98) }
+
+    .slider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: min(520px, 90vw);
+    }
+
+    .slider label {
+      min-width: 2em;
+      text-align: right;
+    }
+
+    .slider input[type="range"] { flex: 1 }
+
+    .slider output {
+      min-width: 4em;
+      text-align: left;
     }
   </style>
 </head>
@@ -57,55 +119,34 @@
   <pre class="code" id="code"></pre>
 
   <div class="ui">
-    <!-- 左：画像/矩形切替と追加削除 -->
-    <div class="col">
+    <!-- 左：画像切替＆保存/戻る -->
+    <div class="row">
       <button class="btn" id="imgPrev">画像 ←</button>
       <div>画像 <span id="imgIndexLabel">1</span> / <span id="imgCountLabel">4</span></div>
       <button class="btn" id="imgNext">画像 →</button>
-      <span style="width:16px"></span>
-      <button class="btn small" id="rectPrev">枠 ←</button>
-      <div>枠 <span id="rectIndexLabel">0</span> / <span id="rectCountLabel">0</span></div>
-      <button class="btn small" id="rectNext">枠 →</button>
-      <button class="btn" id="addRect">＋ 枠</button>
-      <button class="btn" id="delRect">− 枠</button>
       <button class="btn" id="save">保存</button>
       <button class="btn" id="back">戻る</button>
     </div>
 
-    <!-- 中央：十字キー（D-pad）＋移動ステップ -->
-    <div class="col" style="flex-direction:column">
-      <div style="display:flex; align-items:center; gap:10px">
-        <div>移動ステップ</div>
-        <select id="step">
-          <option value="0.2">0.2%</option>
-          <option value="0.5" selected>0.5%</option>
-          <option value="1">1%</option>
-          <option value="2">2%</option>
-          <option value="5">5%</option>
-        </select>
-      </div>
-      <div class="dpad">
-        <span class="sp"></span>
-        <button class="btn" id="moveUp"><span>▲</span></button>
-        <span class="sp"></span>
-        <button class="btn" id="moveLeft"><span>◀</span></button>
-        <span class="sp"></span>
-        <button class="btn" id="moveRight"><span>▶</span></button>
-        <span class="sp"></span>
-        <button class="btn" id="moveDown"><span>▼</span></button>
-        <span class="sp"></span>
-      </div>
-    </div>
-
-    <!-- 右：サイズスライダー（％） -->
-    <div class="col" style="flex-direction:column">
+    <!-- 右：X/Y/W/H スライダー -->
+    <div class="row" style="flex-direction:column;align-items:flex-start">
       <div class="slider">
-        <label for="wRange">幅</label>
+        <label for="xRange">X</label>
+        <input id="xRange" type="range" min="0" max="100" step="0.1">
+        <output id="xOut">—</output>
+      </div>
+      <div class="slider">
+        <label for="yRange">Y</label>
+        <input id="yRange" type="range" min="0" max="100" step="0.1">
+        <output id="yOut">—</output>
+      </div>
+      <div class="slider">
+        <label for="wRange">W</label>
         <input id="wRange" type="range" min="1" max="100" step="0.1">
         <output id="wOut">—</output>
       </div>
       <div class="slider">
-        <label for="hRange">高</label>
+        <label for="hRange">H</label>
         <input id="hRange" type="range" min="1" max="100" step="0.1">
         <output id="hOut">—</output>
       </div>
@@ -113,65 +154,41 @@
   </div>
 
   <script>
-    // ===== 基本設定 =====
     const IMAGE_COUNT = 4; // ← 枚数に合わせて
     const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
-    const KEY = 'tapnext.hotspots'; // index.html と共有する保存キー
+    const KEY = 'tapnext.hotspots';
 
-    // 保存データ（{ [imgIndex]: [{x,y,w,h}, ...], ... }）
     const store = JSON.parse(localStorage.getItem(KEY) || '{}');
+    let imgIndex = 0;
 
-    // 状態
-    let imgIndex = 0;         // 0 = 1.jpg
-    let rectIndex = 0;        // 現在選択中の矩形
     const imgEl = document.getElementById('img');
     const info  = document.getElementById('info');
     const code  = document.getElementById('code');
 
-    // UI参照
     const imgPrev = document.getElementById('imgPrev');
     const imgNext = document.getElementById('imgNext');
-    const rectPrev = document.getElementById('rectPrev');
-    const rectNext = document.getElementById('rectNext');
-    const addRect = document.getElementById('addRect');
-    const delRect = document.getElementById('delRect');
     const saveBtn = document.getElementById('save');
     const backBtn = document.getElementById('back');
 
     const imgIndexLabel = document.getElementById('imgIndexLabel');
     const imgCountLabel = document.getElementById('imgCountLabel');
-    const rectIndexLabel = document.getElementById('rectIndexLabel');
-    const rectCountLabel = document.getElementById('rectCountLabel');
 
-    const stepSel = document.getElementById('step');
-    const moveUp = document.getElementById('moveUp');
-    const moveDown = document.getElementById('moveDown');
-    const moveLeft = document.getElementById('moveLeft');
-    const moveRight = document.getElementById('moveRight');
-
+    const xRange = document.getElementById('xRange');
+    const yRange = document.getElementById('yRange');
     const wRange = document.getElementById('wRange');
     const hRange = document.getElementById('hRange');
+    const xOut = document.getElementById('xOut');
+    const yOut = document.getElementById('yOut');
     const wOut = document.getElementById('wOut');
     const hOut = document.getElementById('hOut');
 
-    // 要素ヘルパ
-    function clamp01(v){ return Math.max(0, Math.min(100, v)); }
-    function list(){ return store[imgIndex] || (store[imgIndex] = []); }
-    function cur(){ 
+    const clamp01 = v => Math.max(0, Math.min(100, v));
+    const list = () => store[imgIndex] || (store[imgIndex] = []);
+    function cur(){
       const L = list();
-      if (L.length === 0) { L.push({x:10, y:62, w:80, h:12}); rectIndex = 0; }
-      if (rectIndex >= L.length) rectIndex = L.length-1;
-      if (rectIndex < 0) rectIndex = 0;
-      return L[rectIndex];
+      if (L.length === 0) L.push({x:10, y:62, w:80, h:12});
+      return L[0];
     }
-
-    // 画像表示とボックス描画
-    function showImage(){
-      imgEl.src = IMAGES[imgIndex];
-      imgIndexLabel.textContent = (imgIndex+1);
-      imgCountLabel.textContent = IMAGE_COUNT;
-    }
-    imgEl.addEventListener('load', renderAll);
 
     function getDispRect(){
       const vw=innerWidth, vh=innerHeight;
@@ -187,11 +204,24 @@
       return {L,T,W,H};
     }
 
-    function renderAll(){
-      // 既存ボックス削除
+    function showImage(){
+      imgEl.src = IMAGES[imgIndex];
+      imgIndexLabel.textContent = (imgIndex+1);
+      imgCountLabel.textContent = IMAGE_COUNT;
+    }
+
+    function render(){
       document.querySelectorAll('.box').forEach(n=>n.remove());
-      // 現在の矩形だけを強調表示（必要なら全矩形を描画してもOK）
       const r = cur();
+
+      xRange.max = (100 - r.w).toFixed(1);
+      yRange.max = (100 - r.h).toFixed(1);
+
+      xRange.value = r.x.toFixed(2); xOut.textContent = r.x.toFixed(1)+'%';
+      yRange.value = r.y.toFixed(2); yOut.textContent = r.y.toFixed(1)+'%';
+      wRange.value = r.w.toFixed(2); wOut.textContent = r.w.toFixed(1)+'%';
+      hRange.value = r.h.toFixed(2); hOut.textContent = r.h.toFixed(1)+'%';
+
       const s = imgToScreen(r);
       const el = document.createElement('div');
       el.className = 'box';
@@ -201,56 +231,33 @@
       el.style.height = s.H+'px';
       document.body.appendChild(el);
 
-      // 情報表示
-      rectCountLabel.textContent = list().length;
-      rectIndexLabel.textContent = (list().length ? (rectIndex+1) : 0);
-      info.textContent = `${imgIndex+1}/${IMAGE_COUNT}  矩形:${list().length}`;
+      info.textContent = `${imgIndex+1}/${IMAGE_COUNT}  矩形:1`;
       code.textContent = JSON.stringify(store, null, 2);
-
-      // スライダー値更新
-      wRange.value = r.w.toFixed(2);
-      hRange.value = r.h.toFixed(2);
-      wOut.textContent = r.w.toFixed(1) + '%';
-      hOut.textContent = r.h.toFixed(1) + '%';
     }
 
-    // 操作：画像・矩形ナビ
-    imgPrev.onclick = ()=>{ imgIndex = (imgIndex-1+IMAGE_COUNT)%IMAGE_COUNT; rectIndex=0; showImage(); };
-    imgNext.onclick = ()=>{ imgIndex = (imgIndex+1)%IMAGE_COUNT; rectIndex=0; showImage(); };
-    rectPrev.onclick = ()=>{ rectIndex = Math.max(0, rectIndex-1); renderAll(); };
-    rectNext.onclick = ()=>{ rectIndex = Math.min(list().length-1, rectIndex+1); renderAll(); };
-
-    addRect.onclick = ()=>{
-      list().push({x:10, y:62, w:80, h:12});
-      rectIndex = list().length-1;
-      renderAll();
-    };
-    delRect.onclick = ()=>{
-      if (list().length){
-        list().splice(rectIndex,1);
-        if (rectIndex >= list().length) rectIndex = list().length-1;
-        renderAll();
-      }
-    };
+    imgPrev.onclick = ()=>{ imgIndex = (imgIndex-1+IMAGE_COUNT)%IMAGE_COUNT; showImage(); };
+    imgNext.onclick = ()=>{ imgIndex = (imgIndex+1)%IMAGE_COUNT; showImage(); };
     saveBtn.onclick = ()=>{
       localStorage.setItem(KEY, JSON.stringify(store));
       navigator.clipboard?.writeText(JSON.stringify(store));
-      renderAll();
+      render();
     };
-    backBtn.onclick = ()=>{ location.href='./index.html'; };
+    backBtn.onclick = ()=>{ location.href = './index.html'; };
 
-    // 操作：十字キー（％ベースで移動）
-    function step(){ return parseFloat(stepSel.value || "0.5"); }
-    moveUp.onclick    = ()=>{ const r=cur(); r.y = clamp01(r.y - step()); renderAll(); };
-    moveDown.onclick  = ()=>{ const r=cur(); r.y = clamp01(r.y + step()); renderAll(); };
-    moveLeft.onclick  = ()=>{ const r=cur(); r.x = clamp01(r.x - step()); renderAll(); };
-    moveRight.onclick = ()=>{ const r=cur(); r.x = clamp01(r.x + step()); renderAll(); };
+    xRange.oninput = ()=>{ const r=cur(); r.x = clamp01(parseFloat(xRange.value)); render(); };
+    yRange.oninput = ()=>{ const r=cur(); r.y = clamp01(parseFloat(yRange.value)); render(); };
+    wRange.oninput = ()=>{
+      const r=cur(); r.w = clamp01(parseFloat(wRange.value));
+      if (r.x > 100 - r.w) r.x = 100 - r.w;
+      render();
+    };
+    hRange.oninput = ()=>{
+      const r=cur(); r.h = clamp01(parseFloat(hRange.value));
+      if (r.y > 100 - r.h) r.y = 100 - r.h;
+      render();
+    };
 
-    // 操作：サイズスライダー（％）
-    wRange.oninput = ()=>{ const r=cur(); r.w = clamp01(parseFloat(wRange.value)); wOut.textContent = r.w.toFixed(1)+'%'; renderAll(); };
-    hRange.oninput = ()=>{ const r=cur(); r.h = clamp01(parseFloat(hRange.value)); hOut.textContent = r.h.toFixed(1)+'%'; renderAll(); };
-
-    // 初期表示
+    imgEl.addEventListener('load', render);
     showImage();
   </script>
 </body>
