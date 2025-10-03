@@ -2,66 +2,176 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Calibrate</title>
-  <meta name="theme-color" content="#000000">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calibrate (D-pad + Sliders)</title>
+  <meta name="theme-color" content="#ffffff">
   <style>
-    html,body{margin:0;height:100%;background:#000;overflow:hidden;-webkit-user-select:none;user-select:none}
+    /* 画面・画像 */
+    html,body{margin:0;height:100%;background:#fff;overflow:hidden;-webkit-user-select:none;user-select:none}
     #img{
-      position:fixed;
-      left:calc(0px - env(safe-area-inset-left));
-      top:calc(0px - env(safe-area-inset-top));
-      width:calc(100vw + env(safe-area-inset-left) + env(safe-area-inset-right));
-      height:calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
-      object-fit:cover;
-      touch-action:none;
+      position:fixed; top:0; left:0; width:100vw; height:100vh;
+      object-fit:cover; touch-action:none;
     }
-    .box{position:fixed;border:2px solid rgba(0,255,255,.9);background:rgba(0,255,255,.15)}
-    .h{position:absolute;width:14px;height:14px;background:rgba(0,255,255,.95);border-radius:3px}
-    .h.tl{left:-7px;top:-7px} .h.tr{right:-7px;top:-7px}
-    .h.bl{left:-7px;bottom:-7px} .h.br{right:-7px;bottom:-7px}
-    .ui{position:fixed;left:8px;right:8px;bottom:8px;display:flex;gap:8px;justify-content:space-between;align-items:center}
-    .btn{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);padding:10px 14px;border-radius:12px;font:16px/1.2 system-ui}
+    /* 選択矩形 */
+    .box{
+      position:fixed; border:2px solid #0b78e3; background:rgba(11,120,227,.12);
+      box-shadow: 0 0 0 1px rgba(11,120,227,.2) inset;
+    }
+    /* 情報＆JSONビュー */
+    .pill{position:fixed; left:8px; top:8px; color:#000; background:rgba(255,255,255,.8);
+      font:14px/1.2 system-ui; padding:6px 10px; border-radius:12px; border:1px solid rgba(0,0,0,.25)}
+    .code{position:fixed; right:8px; top:8px; max-width:60vw; max-height:40vh; overflow:auto;
+      background:rgba(255,255,255,.9); color:#000; border:1px solid rgba(0,0,0,.3);
+      padding:6px 8px; border-radius:10px; font:12px/1.3 ui-monospace; white-space:pre}
+    /* 下部UI */
+    .ui{position:fixed; left:8px; right:8px; bottom:8px; display:grid; gap:10px;
+      grid-template-columns: 1fr 1fr 1fr; align-items:center}
+    .col{display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap}
+
+    .btn{background:#11111110; color:#000; border:1px solid #00000033; padding:10px 14px;
+      border-radius:12px; font:16px/1.2 system-ui; min-width:44px; text-align:center}
     .btn:active{transform:scale(.98)}
-    .pill{position:fixed;left:8px;top:8px;color:#fff;background:rgba(0,0,0,.35);font:14px/1.2 system-ui;padding:6px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.25)}
-    .code{position:fixed;right:8px;top:8px;max-width:60vw;background:rgba(0,0,0,.45);color:#0ff;border:1px solid rgba(0,255,255,.4);padding:6px 8px;border-radius:10px;font:12px/1.3 ui-monospace}
+    .btn.small{padding:8px 10px; font-size:14px}
+
+    /* D-pad */
+    .dpad{display:grid; grid-template-columns: 48px 48px 48px; grid-template-rows:48px 48px 48px; gap:6px}
+    .dpad .sp{visibility:hidden}
+    .dpad .btn{min-width:auto; padding:0}
+    .dpad .btn span{display:inline-block; font-size:20px; line-height:48px; width:48px; height:48px}
+
+    /* スライダー */
+    .slider{display:flex; align-items:center; gap:8px; width:min(60vw, 360px)}
+    .slider label{min-width:3.5em; text-align:right; color:#000; font:14px system-ui}
+    .slider input[type="range"]{flex:1}
+    .slider output{min-width:3.5em; text-align:left; font:14px system-ui}
+
+    /* 小さな選択 */
+    select, input[type="number"]{
+      font:14px system-ui; padding:6px 8px; border-radius:10px; border:1px solid #00000033; background:#fff; color:#000;
+    }
   </style>
 </head>
 <body>
-  <img id="img" src="./images/1.jpg" />
+  <img id="img" src="./images/1.jpg" alt="">
   <div class="pill" id="info"></div>
   <pre class="code" id="code"></pre>
+
   <div class="ui">
-    <button class="btn" id="prev">←</button>
-    <button class="btn" id="add">＋ 矩形</button>
-    <button class="btn" id="save">保存</button>
-    <button class="btn" id="next">→</button>
-    <button class="btn" id="back">戻る</button>
+    <!-- 左：画像/矩形切替と追加削除 -->
+    <div class="col">
+      <button class="btn" id="imgPrev">画像 ←</button>
+      <div>画像 <span id="imgIndexLabel">1</span> / <span id="imgCountLabel">4</span></div>
+      <button class="btn" id="imgNext">画像 →</button>
+      <span style="width:16px"></span>
+      <button class="btn small" id="rectPrev">枠 ←</button>
+      <div>枠 <span id="rectIndexLabel">0</span> / <span id="rectCountLabel">0</span></div>
+      <button class="btn small" id="rectNext">枠 →</button>
+      <button class="btn" id="addRect">＋ 枠</button>
+      <button class="btn" id="delRect">− 枠</button>
+      <button class="btn" id="save">保存</button>
+      <button class="btn" id="back">戻る</button>
+    </div>
+
+    <!-- 中央：十字キー（D-pad）＋移動ステップ -->
+    <div class="col" style="flex-direction:column">
+      <div style="display:flex; align-items:center; gap:10px">
+        <div>移動ステップ</div>
+        <select id="step">
+          <option value="0.2">0.2%</option>
+          <option value="0.5" selected>0.5%</option>
+          <option value="1">1%</option>
+          <option value="2">2%</option>
+          <option value="5">5%</option>
+        </select>
+      </div>
+      <div class="dpad">
+        <span class="sp"></span>
+        <button class="btn" id="moveUp"><span>▲</span></button>
+        <span class="sp"></span>
+        <button class="btn" id="moveLeft"><span>◀</span></button>
+        <span class="sp"></span>
+        <button class="btn" id="moveRight"><span>▶</span></button>
+        <span class="sp"></span>
+        <button class="btn" id="moveDown"><span>▼</span></button>
+        <span class="sp"></span>
+      </div>
+    </div>
+
+    <!-- 右：サイズスライダー（％） -->
+    <div class="col" style="flex-direction:column">
+      <div class="slider">
+        <label for="wRange">幅</label>
+        <input id="wRange" type="range" min="1" max="100" step="0.1">
+        <output id="wOut">—</output>
+      </div>
+      <div class="slider">
+        <label for="hRange">高</label>
+        <input id="hRange" type="range" min="1" max="100" step="0.1">
+        <output id="hOut">—</output>
+      </div>
+    </div>
   </div>
 
   <script>
-    // === 設定 ===
+    // ===== 基本設定 =====
     const IMAGE_COUNT = 4; // ← 枚数に合わせて
     const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
+    const KEY = 'tapnext.hotspots'; // index.html と共有する保存キー
 
-    // 保存先キー
-    const KEY = 'tapnext.hotspots';
-
-    // 読み込み（なければ空）
+    // 保存データ（{ [imgIndex]: [{x,y,w,h}, ...], ... }）
     const store = JSON.parse(localStorage.getItem(KEY) || '{}');
 
-    let index = 0; // 0=1.jpg
+    // 状態
+    let imgIndex = 0;         // 0 = 1.jpg
+    let rectIndex = 0;        // 現在選択中の矩形
     const imgEl = document.getElementById('img');
     const info  = document.getElementById('info');
     const code  = document.getElementById('code');
 
-    function clamp(i){ return (i+IMAGES.length)%IMAGES.length; }
-    function show(){
-      imgEl.src = IMAGES[index];
-      renderBoxes();
-      updateInfo();
-      renderCode();
+    // UI参照
+    const imgPrev = document.getElementById('imgPrev');
+    const imgNext = document.getElementById('imgNext');
+    const rectPrev = document.getElementById('rectPrev');
+    const rectNext = document.getElementById('rectNext');
+    const addRect = document.getElementById('addRect');
+    const delRect = document.getElementById('delRect');
+    const saveBtn = document.getElementById('save');
+    const backBtn = document.getElementById('back');
+
+    const imgIndexLabel = document.getElementById('imgIndexLabel');
+    const imgCountLabel = document.getElementById('imgCountLabel');
+    const rectIndexLabel = document.getElementById('rectIndexLabel');
+    const rectCountLabel = document.getElementById('rectCountLabel');
+
+    const stepSel = document.getElementById('step');
+    const moveUp = document.getElementById('moveUp');
+    const moveDown = document.getElementById('moveDown');
+    const moveLeft = document.getElementById('moveLeft');
+    const moveRight = document.getElementById('moveRight');
+
+    const wRange = document.getElementById('wRange');
+    const hRange = document.getElementById('hRange');
+    const wOut = document.getElementById('wOut');
+    const hOut = document.getElementById('hOut');
+
+    // 要素ヘルパ
+    function clamp01(v){ return Math.max(0, Math.min(100, v)); }
+    function list(){ return store[imgIndex] || (store[imgIndex] = []); }
+    function cur(){ 
+      const L = list();
+      if (L.length === 0) { L.push({x:10, y:62, w:80, h:12}); rectIndex = 0; }
+      if (rectIndex >= L.length) rectIndex = L.length-1;
+      if (rectIndex < 0) rectIndex = 0;
+      return L[rectIndex];
     }
+
+    // 画像表示とボックス描画
+    function showImage(){
+      imgEl.src = IMAGES[imgIndex];
+      imgIndexLabel.textContent = (imgIndex+1);
+      imgCountLabel.textContent = IMAGE_COUNT;
+    }
+    imgEl.addEventListener('load', renderAll);
 
     function getDispRect(){
       const vw=innerWidth, vh=innerHeight;
@@ -76,109 +186,72 @@
       const W=(r.w/100)*R.w, H=(r.h/100)*R.h;
       return {L,T,W,H};
     }
-    function screenToImgRect(L,T,W,H){
-      const R=getDispRect();
-      const x=( (L-R.x)/R.w )*100;
-      const y=( (T-R.y)/R.h )*100;
-      const w=( W/R.w )*100;
-      const h=( H/R.h )*100;
-      return {x:fix(x),y:fix(y),w:fix(w),h:fix(h)};
-    }
-    function fix(v){ return Math.max(0, Math.min(100, +v.toFixed(2))); }
 
-    function list(){ return store[index] || (store[index]=[]); }
-
-    function renderBoxes(){
+    function renderAll(){
+      // 既存ボックス削除
       document.querySelectorAll('.box').forEach(n=>n.remove());
-      for(const r of list()){
-        const s = imgToScreen(r);
-        const el = document.createElement('div');
-        el.className='box';
-        el.style.left = s.L+'px';
-        el.style.top  = s.T+'px';
-        el.style.width  = s.W+'px';
-        el.style.height = s.H+'px';
-        addHandles(el, r);
-        document.body.appendChild(el);
-      }
-    }
+      // 現在の矩形だけを強調表示（必要なら全矩形を描画してもOK）
+      const r = cur();
+      const s = imgToScreen(r);
+      const el = document.createElement('div');
+      el.className = 'box';
+      el.style.left = s.L+'px';
+      el.style.top  = s.T+'px';
+      el.style.width  = s.W+'px';
+      el.style.height = s.H+'px';
+      document.body.appendChild(el);
 
-    function addHandles(el, r){
-      const mk = cls => { const h=document.createElement('div'); h.className='h '+cls; el.appendChild(h); return h; };
-      const tl=mk('tl'), tr=mk('tr'), bl=mk('bl'), br=mk('br');
-
-      // 移動
-      let ox=0, oy=0, startL=0, startT=0;
-      const dragStart = (cx,cy)=>{
-        const rect = el.getBoundingClientRect();
-        ox=cx; oy=cy; startL=rect.left; startT=rect.top;
-      };
-      const dragMove = (cx,cy)=>{
-        const L=startL+(cx-ox), T=startT+(cy-oy);
-        const W=el.getBoundingClientRect().width, H=el.getBoundingClientRect().height;
-        Object.assign(r, screenToImgRect(L,T,W,H));
-        renderBoxes(); renderCode(); updateInfo();
-      };
-
-      el.addEventListener('mousedown', e=>{ if(e.target.classList.contains('h'))return; dragStart(e.clientX,e.clientY); const mv=e2=>dragMove(e2.clientX,e2.clientY); const up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up)}; addEventListener('mousemove',mv); addEventListener('mouseup',up); });
-      el.addEventListener('touchstart', e=>{ if(e.target.classList.contains('h'))return; const t=e.changedTouches[0]; dragStart(t.clientX,t.clientY); const mv=e2=>{const tt=e2.changedTouches[0]; dragMove(tt.clientX,tt.clientY)}; const up=()=>{removeEventListener('touchmove',mv);removeEventListener('touchend',up)}; addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up); }, {passive:true});
-
-      // リサイズ
-      const resizer = (corner) => (cx,cy)=>{
-        const rect = el.getBoundingClientRect();
-        let L=rect.left, T=rect.top, W=rect.width, H=rect.height;
-        const dx=cx-rect.left, dy=cy-rect.top;
-        if(corner==='tl'){ L=cx; T=cy; W=rect.right-cx; H=rect.bottom-cy; }
-        if(corner==='tr'){ T=cy; W=cx-rect.left; H=rect.bottom-cy; }
-        if(corner==='bl'){ L=cx; W=rect.right-cx; H=cy-rect.top; }
-        if(corner==='br'){ W=cx-rect.left; H=cy-rect.top; }
-        Object.assign(r, screenToImgRect(L,T,W,H));
-        renderBoxes(); renderCode(); updateInfo();
-      };
-      const bind = (node, corner)=>{
-        node.addEventListener('mousedown', e=>{
-          e.stopPropagation(); const mv=e2=>resizer(corner)(e2.clientX,e2.clientY);
-          const up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};
-          addEventListener('mousemove',mv); addEventListener('mouseup',up);
-        });
-        node.addEventListener('touchstart', e=>{
-          e.stopPropagation(); const mv=e2=>{const t=e2.changedTouches[0]; resizer(corner)(t.clientX,t.clientY)};
-          const up=()=>{removeEventListener('touchmove',mv);removeEventListener('touchend',up)};
-          addEventListener('touchmove',mv,{passive:false}); addEventListener('touchend',up);
-        }, {passive:true});
-      };
-      bind(tl,'tl'); bind(tr,'tr'); bind(bl,'bl'); bind(br,'br');
-    }
-
-    function updateInfo(){
-      info.textContent = `${index+1}/${IMAGE_COUNT}  矩形:${list().length}`;
-    }
-    function renderCode(){
+      // 情報表示
+      rectCountLabel.textContent = list().length;
+      rectIndexLabel.textContent = (list().length ? (rectIndex+1) : 0);
+      info.textContent = `${imgIndex+1}/${IMAGE_COUNT}  矩形:${list().length}`;
       code.textContent = JSON.stringify(store, null, 2);
+
+      // スライダー値更新
+      wRange.value = r.w.toFixed(2);
+      hRange.value = r.h.toFixed(2);
+      wOut.textContent = r.w.toFixed(1) + '%';
+      hOut.textContent = r.h.toFixed(1) + '%';
     }
 
-    // 追加・保存・移動
-    document.getElementById('add').onclick = ()=>{
-      // 画面中央に横長矩形を仮置き
-      const R=getDispRect();
-      const L=R.x+R.w*0.1, W=R.w*0.8, H=R.h*0.12, T=R.y+R.h*0.62;
-      list().push( screenToImgRect(L,T,W,H) );
-      renderBoxes(); renderCode(); updateInfo();
-    };
-    document.getElementById('save').onclick = ()=>{
-      localStorage.setItem(KEY, JSON.stringify(store));
-      // クリップボードにも（各ブラウザで許可必要）
-      navigator.clipboard?.writeText(JSON.stringify(store));
-    };
-    document.getElementById('prev').onclick = ()=>{ index=clamp(index-1); show(); };
-    document.getElementById('next').onclick = ()=>{ index=clamp(index+1); show(); };
-    document.getElementById('back').onclick = ()=>{ location.href='./index.html'; };
+    // 操作：画像・矩形ナビ
+    imgPrev.onclick = ()=>{ imgIndex = (imgIndex-1+IMAGE_COUNT)%IMAGE_COUNT; rectIndex=0; showImage(); };
+    imgNext.onclick = ()=>{ imgIndex = (imgIndex+1)%IMAGE_COUNT; rectIndex=0; showImage(); };
+    rectPrev.onclick = ()=>{ rectIndex = Math.max(0, rectIndex-1); renderAll(); };
+    rectNext.onclick = ()=>{ rectIndex = Math.min(list().length-1, rectIndex+1); renderAll(); };
 
-    // 画像読み込み後に再配置
-    imgEl.addEventListener('load', renderBoxes);
+    addRect.onclick = ()=>{
+      list().push({x:10, y:62, w:80, h:12});
+      rectIndex = list().length-1;
+      renderAll();
+    };
+    delRect.onclick = ()=>{
+      if (list().length){
+        list().splice(rectIndex,1);
+        if (rectIndex >= list().length) rectIndex = list().length-1;
+        renderAll();
+      }
+    };
+    saveBtn.onclick = ()=>{
+      localStorage.setItem(KEY, JSON.stringify(store));
+      navigator.clipboard?.writeText(JSON.stringify(store));
+      renderAll();
+    };
+    backBtn.onclick = ()=>{ location.href='./index.html'; };
+
+    // 操作：十字キー（％ベースで移動）
+    function step(){ return parseFloat(stepSel.value || "0.5"); }
+    moveUp.onclick    = ()=>{ const r=cur(); r.y = clamp01(r.y - step()); renderAll(); };
+    moveDown.onclick  = ()=>{ const r=cur(); r.y = clamp01(r.y + step()); renderAll(); };
+    moveLeft.onclick  = ()=>{ const r=cur(); r.x = clamp01(r.x - step()); renderAll(); };
+    moveRight.onclick = ()=>{ const r=cur(); r.x = clamp01(r.x + step()); renderAll(); };
+
+    // 操作：サイズスライダー（％）
+    wRange.oninput = ()=>{ const r=cur(); r.w = clamp01(parseFloat(wRange.value)); wOut.textContent = r.w.toFixed(1)+'%'; renderAll(); };
+    hRange.oninput = ()=>{ const r=cur(); r.h = clamp01(parseFloat(hRange.value)); hOut.textContent = r.h.toFixed(1)+'%'; renderAll(); };
 
     // 初期表示
-    show();
+    showImage();
   </script>
 </body>
 </html>
