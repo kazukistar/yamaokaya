@@ -4,9 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Tap Next</title>
+
+  <!-- アイコン設定 -->
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#ffffff">
+
   <style>
-    :root { --mask-extra: 20px; } /* ← ここで余分に隠す高さを調整 */
+    :root { --mask-extra: 20px; }
 
     body {
       margin: 0;
@@ -25,7 +31,6 @@
       object-fit: cover;
       z-index: 0;
     }
-    /* ダイナミックアイランド＋時計部分まで白くマスク */
     .top-mask {
       position: fixed;
       top: 0;
@@ -34,6 +39,7 @@
       height: calc(env(safe-area-inset-top, 44px) + var(--mask-extra));
       background: #fff;
       z-index: 10;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -46,48 +52,45 @@
     const IMAGES = Array.from({length: IMAGE_COUNT}, (_,i)=>`./images/${i+1}.jpg`);
     const KEY = 'tapnext.hotspots';
     let imgIndex = 0;
-
     const imgEl = document.getElementById('img');
     const store = JSON.parse(localStorage.getItem(KEY) || '{}');
 
-    function showImage() {
-      imgEl.src = IMAGES[imgIndex];
-    }
+    function showImage(){ imgEl.src = IMAGES[imgIndex]; }
 
     function hit(x,y){
       const rect = imgEl.getBoundingClientRect();
       const nx = ((x-rect.left)/rect.width)*100;
       const ny = ((y-rect.top)/rect.height)*100;
       const list = store[imgIndex] || [];
-      return list.find(r =>
-        nx >= r.x && nx <= r.x+r.w &&
-        ny >= r.y && ny <= r.y+r.h
-      );
+      return list.find(r => nx>=r.x && nx<=r.x+r.w && ny>=r.y && ny<=r.y+r.h);
     }
 
-    imgEl.addEventListener('click', e=>{
-      if(hit(e.clientX,e.clientY)){
+    function handleTap(x,y){
+      if (imgIndex === 0) {
+        secretCount++;
+        if (secretCount >= 10) { location.href = './calibrate.html'; return; }
+        clearTimeout(secretTimer);
+        secretTimer = setTimeout(()=>secretCount=0, 1200);
+      }
+      if (hit(x,y)) {
         imgIndex = (imgIndex+1) % IMAGE_COUNT;
         showImage();
       }
-    });
+    }
 
     let startX = null;
-    imgEl.addEventListener('touchstart', e=>{
-      startX = e.touches[0].clientX;
-    });
-    imgEl.addEventListener('touchend', e=>{
-      const endX = e.changedTouches[0].clientX;
-      if(startX - endX > 50){
-        imgIndex = (imgIndex+1) % IMAGE_COUNT;
+    document.addEventListener('touchstart', e=>{ startX=e.touches[0].clientX; }, {passive:true});
+    document.addEventListener('touchend', e=>{
+      const t=e.changedTouches[0];
+      const dx=t.clientX-(startX??t.clientX);
+      if (Math.abs(dx)>50) {
+        imgIndex = (dx<0)?(imgIndex+1)%IMAGE_COUNT:(imgIndex-1+IMAGE_COUNT)%IMAGE_COUNT;
         showImage();
-      }
-      if(endX - startX > 50){
-        imgIndex = (imgIndex-1+IMAGE_COUNT) % IMAGE_COUNT;
-        showImage();
-      }
-    });
+      } else handleTap(t.clientX,t.clientY);
+    }, {passive:true});
+    document.addEventListener('click', e=>{ handleTap(e.clientX,e.clientY); });
 
+    let secretCount=0, secretTimer=null;
     showImage();
   </script>
 </body>
